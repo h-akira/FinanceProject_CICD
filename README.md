@@ -15,11 +15,18 @@ CloudFormationは**環境構築不要**という強みがあるため、CI/CDパ
 
 ```
 FinanceProject_CICD/
-├── codebuild-backend.yaml   # Backend (SAM) 用 CodeBuild
-├── codebuild-frontend.yaml  # Frontend (S3) 用 CodeBuild
-├── codebuild-infra.yaml     # Infrastructure (CDK) 用 CodeBuild
+├── common/
+│   └── codebuild-infra.yaml     # Infrastructure (CDK) 用 CodeBuild
+├── dashboard/
+│   ├── codebuild-backend.yaml   # Dashboard Backend (SAM) 用 CodeBuild
+│   └── codebuild-frontend.yaml  # Dashboard Frontend (S3) 用 CodeBuild
 └── README.md
 ```
+
+**ディレクトリ構成の意図:**
+- `common/` - 全サブシステム共通のインフラCI/CD
+- `dashboard/` - FinanceDashboardProjectサブシステム専用のCI/CD
+- 将来サブシステムが増えた場合は、同様のディレクトリを追加（例: `analytics/`）
 
 ## 🚀 デプロイ方法
 
@@ -53,11 +60,36 @@ Frontend用のS3バケットは別途作成してください（CDK/Terraformで
 
 ---
 
+### Infrastructure CodeBuild のデプロイ（最初にデプロイ）
+
+```bash
+AWS_PROFILE=finance aws cloudformation deploy \
+  --template-file common/codebuild-infra.yaml \
+  --stack-name stack-finance-cicd-infra \
+  --parameter-overrides \
+    ProjectName=build-finance-infra \
+    GitHubOwner=h-akira \
+    GitHubRepo=FinanceProject_Infra \
+    GitHubBranch=main \
+    CodeStarConnectionArn=arn:aws:codeconnections:ap-northeast-1:XXXXXXXXXXXX:connection/xxx \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region ap-northeast-1
+```
+
+**パラメータ**:
+- `ProjectName`: CodeBuildプロジェクト名
+- `GitHubOwner`: GitHubリポジトリオーナー
+- `GitHubRepo`: GitHubリポジトリ名
+- `GitHubBranch`: ビルド対象ブランチ（mainなど）
+- `CodeStarConnectionArn`: 上記で作成したCodeStar Connection ARN
+
+---
+
 ### Backend CodeBuild のデプロイ
 
 ```bash
 AWS_PROFILE=finance aws cloudformation deploy \
-  --template-file codebuild-backend.yaml \
+  --template-file dashboard/codebuild-backend.yaml \
   --stack-name stack-finance-dashboard-cicd-backend \
   --parameter-overrides \
     ProjectName=build-finance-dashboard-backend \
@@ -78,36 +110,11 @@ AWS_PROFILE=finance aws cloudformation deploy \
 
 ---
 
-### Infrastructure CodeBuild のデプロイ
-
-```bash
-AWS_PROFILE=finance aws cloudformation deploy \
-  --template-file codebuild-infra.yaml \
-  --stack-name stack-finance-dashboard-cicd-infra \
-  --parameter-overrides \
-    ProjectName=build-finance-infra \
-    GitHubOwner=h-akira \
-    GitHubRepo=FinanceProject_Infra \
-    GitHubBranch=main \
-    CodeStarConnectionArn=arn:aws:codeconnections:ap-northeast-1:XXXXXXXXXXXX:connection/xxx \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --region ap-northeast-1
-```
-
-**パラメータ**:
-- `ProjectName`: CodeBuildプロジェクト名
-- `GitHubOwner`: GitHubリポジトリオーナー
-- `GitHubRepo`: GitHubリポジトリ名
-- `GitHubBranch`: ビルド対象ブランチ（mainなど）
-- `CodeStarConnectionArn`: 上記で作成したCodeStar Connection ARN
-
----
-
 ### Frontend CodeBuild のデプロイ
 
 ```bash
 AWS_PROFILE=finance aws cloudformation deploy \
-  --template-file codebuild-frontend.yaml \
+  --template-file dashboard/codebuild-frontend.yaml \
   --stack-name stack-finance-dashboard-cicd-frontend \
   --parameter-overrides \
     ProjectName=build-finance-dashboard-frontend \
@@ -135,8 +142,15 @@ AWS_PROFILE=finance aws cloudformation deploy \
 CloudFormationテンプレートを修正した後、同じコマンドで更新できます：
 
 ```bash
+# Infrastructure更新例
 AWS_PROFILE=finance aws cloudformation deploy \
-  --template-file codebuild-backend.yaml \
+  --template-file common/codebuild-infra.yaml \
+  --stack-name stack-finance-cicd-infra \
+  --parameter-overrides ...
+
+# Backend更新例
+AWS_PROFILE=finance aws cloudformation deploy \
+  --template-file dashboard/codebuild-backend.yaml \
   --stack-name stack-finance-dashboard-cicd-backend \
   --parameter-overrides ... \
   --capabilities CAPABILITY_NAMED_IAM \
