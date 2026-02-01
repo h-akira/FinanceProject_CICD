@@ -127,6 +127,29 @@ Resources:
               - !Sub 'arn:aws:s3:::${S3BucketName}'
               - !Sub 'arn:aws:s3:::${S3BucketName}/*'
 
+  # CloudFront Invalidation Policy
+  CloudFrontInvalidationPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: CloudFrontInvalidationPolicy
+      Roles:
+        - !Ref CodeBuildServiceRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CloudFormationDescribeStacks
+            Effect: Allow
+            Action:
+              - cloudformation:DescribeStacks
+            Resource:
+              - !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/stack-finance-dashboard-infra-main/*'
+          - Sid: CloudFrontInvalidation
+            Effect: Allow
+            Action:
+              - cloudfront:CreateInvalidation
+            Resource:
+              - !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/*'
+
   # CodeBuild Project
   FrontendProject:
     Type: AWS::CodeBuild::Project
